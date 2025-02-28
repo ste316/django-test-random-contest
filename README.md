@@ -23,7 +23,7 @@ The Djungle Contest API allows users to participate in contests and win prizes b
 
 1. Clone the repository:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/ste316/django-test-random-contest
    cd djungle_contest_api
    ```
 
