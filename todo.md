@@ -1,0 +1,2 @@
+- rileggere requisiti a mano
+- scrivere guida ben fatta

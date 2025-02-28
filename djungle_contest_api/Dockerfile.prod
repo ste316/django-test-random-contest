@@ -1,0 +1,78 @@
+###########
+# BUILDER #
+###########
+
+FROM python:3.10-slim as builder
+
+# Set work directory
+WORKDIR /app
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# Install dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    python3-dev \
+    libpq-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r requirements.txt
+
+# Add gunicorn to requirements
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels gunicorn==21.2.0
+
+#########
+# FINAL #
+#########
+
+FROM python:3.10-slim
+
+# Create directory for the app user
+RUN mkdir -p /home/app
+
+# Create a non-root user
+RUN groupadd -r app && \
+    useradd -r -g app -d /home/app -s /bin/bash app && \
+    chown app:app /home/app
+
+# Set work directory
+WORKDIR /app
+
+# Install dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq-dev \
+    netcat-traditional \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY --from=builder /app/wheels /wheels
+RUN pip install --no-cache-dir /wheels/*
+
+# Copy entrypoint script
+COPY --chown=app:app ./entrypoint.prod.sh /app/entrypoint.prod.sh
+RUN chmod +x /app/entrypoint.prod.sh
+
+# Copy project
+COPY --chown=app:app . /app/
+
+# Create necessary directories
+RUN mkdir -p /app/static /app/media /app/logs && \
+    chown -R app:app /app/static /app/media /app/logs
+
+# Switch to the app user
+USER app
+
+# Expose port
+EXPOSE 8000
+
+# Use the production entrypoint script
+ENTRYPOINT ["/app/entrypoint.prod.sh"]
+
+# Run gunicorn
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "djungle_contest_api.wsgi:application"] 

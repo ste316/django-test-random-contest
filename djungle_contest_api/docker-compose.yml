@@ -1,0 +1,22 @@
+services:
+  # Django web application
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    volumes:
+      - .:/app
+      - static_volume:/app/static
+      - media_volume:/app/media
+      - ./logs:/app/logs
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=False
+      - DATABASE_URL=sqlite:///db.sqlite3
+      - SECRET_KEY=django-insecure-key-for-development-only
+
+volumes:
+  static_volume:
+  media_volume:

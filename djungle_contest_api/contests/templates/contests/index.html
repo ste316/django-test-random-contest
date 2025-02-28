@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Djungle Contest API</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2, h3 {
+            color: #0066cc;
+        }
+        .header {
+            border-bottom: 1px solid #eee;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }
+        .endpoint {
+            background-color: #f9f9f9;
+            border-left: 4px solid #0066cc;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 0 4px 4px 0;
+        }
+        .endpoint h3 {
+            margin-top: 0;
+        }
+        .param-table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        .param-table th, .param-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .param-table th {
+            background-color: #f2f2f2;
+        }
+        .method {
+            display: inline-block;
+            padding: 2px 8px;
+            background-color: #34c759;
+            color: white;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .footer {
+            margin-top: 40px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+        .api-stats {
+            background-color: #f0f7ff;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .code {
+            font-family: monospace;
+            background-color: #f5f5f5;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Djungle Contest API</h1>
+        <p>Version 2.4</p>
+        <p>API for contest participation with pseudo-random prize distribution.</p>
+    </div>
+
+    <div class="api-stats">
+        <h2>API Status</h2>
+        <p>Currently active contests: <strong>{{ active_contests }}</strong></p>
+        <p>Server time: <strong>{{ timestamp }}</strong></p>
+    </div>
+
+    <h2>API Endpoints</h2>
+
+    <div class="endpoint">
+        <h3><span class="method">GET</span> /play/</h3>
+        <p>Participate in a contest with a chance to win prizes based on a pseudo-random algorithm.</p>
+        
+        <h4>Parameters</h4>
+        <table class="param-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Required</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>contest</td>
+                    <td>string</td>
+                    <td>Yes</td>
+                    <td>Contest code to participate in</td>
+                </tr>
+                <tr>
+                    <td>user</td>
+                    <td>string</td>
+                    <td>No</td>
+                    <td>User identifier (optional, for tracking wins per user)</td>
+                </tr>
+                <tr>
+                    <td>debug</td>
+                    <td>boolean</td>
+                    <td>No</td>
+                    <td>Enable debug mode with enhanced logging</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h4>Response</h4>
+        <p>The response will indicate whether the user won a prize or not.</p>
+        <p>Example winning response:</p>
+        <pre><code>{
+    "win": true,
+    "prize": {
+        "code": "PRIZE1",
+        "name": "Example Prize"
+    }
+}</code></pre>
+
+        <p>Example non-winning response:</p>
+        <pre><code>{
+    "win": false,
+    "prize": null
+}</code></pre>
+
+        <h4>Status Codes</h4>
+        <ul>
+            <li><strong>200 OK</strong> - Request successful (may be a win or loss)</li>
+            <li><strong>400 Bad Request</strong> - Missing required parameters</li>
+            <li><strong>404 Not Found</strong> - Contest not found</li>
+            <li><strong>422 Unprocessable Entity</strong> - Contest is not active</li>
+        </ul>
+    </div>
+
+    <div class="endpoint">
+        <h3><span class="method">GET</span> /stats/</h3>
+        <p>Get detailed statistics about prize distribution for a contest.</p>
+        
+        <h4>Parameters</h4>
+        <table class="param-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Required</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>contest</td>
+                    <td>string</td>
+                    <td>Yes</td>
+                    <td>Contest code to get statistics for</td>
+                </tr>
+                <tr>
+                    <td>prize</td>
+                    <td>string</td>
+                    <td>No</td>
+                    <td>Specific prize code to get statistics for (optional)</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h4>Response</h4>
+        <p>The response includes detailed statistics about prize distribution.</p>
+        <p>Example response structure (simplified):</p>
+        <pre><code>{
+    "contest": {
+        "code": "CONTEST1",
+        "name": "Example Contest",
+        "is_active": true,
+        "start_date": "2023-01-01",
+        "end_date": "2023-12-31"
+    },
+    "prizes": {
+        "PRIZE1": {
+            "name": "Example Prize",
+            "perday": 10,
+            "total_wins": 5,
+            "remaining_wins": 5,
+            "distribution_evenness": 0.75,
+            "hours": [...]
+        }
+    },
+    "timestamp": "2023-06-01T12:34:56.789Z"
+}</code></pre>
+    </div>
+
+    <h2>Management Commands</h2>
+    <p>The API includes several management commands for administrators:</p>
+    
+    <div class="endpoint">
+        <h3>Analyze Prize Distribution</h3>
+        <p>Command: <span class="code">python manage.py analyze_prize_distribution CONTEST_CODE</span></p>
+        <p>Provides detailed analysis of prize distribution for a contest.</p>
+    </div>
+
+    <div class="endpoint">
+        <h3>Visualize Distribution</h3>
+        <p>Command: <span class="code">python manage.py visualize_distribution CONTEST_CODE</span></p>
+        <p>Generates ASCII charts to visualize the hourly distribution of prizes.</p>
+    </div>
+
+    <div class="footer">
+        <p>Djungle Contest API © 2025. For more information, see the README.md file.</p>
+    </div>
+</body>
+</html> 

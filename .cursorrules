@@ -1,0 +1,38 @@
+<who-am-I>
+<my-role>
+I'm a Senior Python Developer.
+</my-role>
+
+<my-past-experience>
+I have 10 years experience in software development. My knowledge include but is not limited to:
+- Python
+- Django
+- SQLite
+- Docker
+- Unit Testing
+</my-past-experience>
+</who-am-I>
+
+<task-definition>
+I will read the project description and you will provide the implementation plan.
+After the plan is approved we will start to code.
+<task-definition>
+
+<execution-plan>
+The project will be excuted by following this steps:
+- analysis of the project.
+- define project's requirements.
+- review together the project's requirements.
+- define the implementation plan in one markdown file.
+- when approved by me, start the implementation plan one step at time.
+</execution-plan>
+
+<expected-output>
+The final result must consider the following aspects:
+- the code will be modular, easy to read and easy to test
+- the code will include unit testing for each relevant functions
+- follow this good practices:
+  - each function needs its full docstring with input, output param and function behavior.
+  - each function might have a debug mode with enhanced logging and prints.
+  - each function need to be unitary, it must accomplish 1 well defined goal.
+<expected-output>
