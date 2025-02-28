@@ -110,15 +110,7 @@ The Djungle Contest API includes a sophisticated prize distribution system that 
 GET /play/?contest={code}&user={user_id}
 ```
 
-Allows users to participate in a contest with a chance to win prizes based on the fair distribution algorithm.
-
-#### Statistics Endpoint
-
-```
-GET /stats/?contest={code}&prize={prize_code}
-```
-
-Provides detailed statistics about prize distribution for a contest or specific prize.
+Allows users to participate in a contest for a chance to win a prize.
 
 ### Management Commands
 
@@ -127,9 +119,6 @@ The system includes several management commands for administrators:
 ```bash
 # Analyze prize distribution for a contest
 python manage.py analyze_prize_distribution CONTEST_CODE
-
-# Visualize prize distribution with ASCII charts
-python manage.py visualize_distribution CONTEST_CODE
 
 # Run distribution simulation
 python test_prize_distribution.py CONTEST_CODE

@@ -2,6 +2,7 @@ from django.db import models
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 import datetime
+from .constants import USER_MAX_WINS_PER_DAY
 
 class Contest(models.Model):
     """
@@ -105,3 +106,37 @@ class WinRecord(models.Model):
     def __str__(self):
         user_str = f" by {self.user_id}" if self.user_id else ""
         return f"{self.prize.name} won{user_str} at {self.timestamp}"
+    
+    @classmethod
+    def get_user_wins_today(cls, user_id):
+        """
+        Get the number of wins a specific user has had today across all contests.
+        
+        Args:
+            user_id (str): The identifier for the user.
+            
+        Returns:
+            int: Number of wins today for this user.
+        """
+        if not user_id:
+            return 0
+            
+        today = timezone.now().date()
+        return cls.objects.filter(user_id=user_id, timestamp__date=today).count()
+    
+    @classmethod
+    def user_can_win_today(cls, user_id, max_wins=USER_MAX_WINS_PER_DAY):
+        """
+        Check if a user can still win today based on their daily win limit.
+        
+        Args:
+            user_id (str): The identifier for the user.
+            max_wins (int): Maximum number of wins allowed per user per day.
+            
+        Returns:
+            bool: True if the user can still win today, False otherwise.
+        """
+        if not user_id:
+            return True
+            
+        return cls.get_user_wins_today(user_id) < max_wins

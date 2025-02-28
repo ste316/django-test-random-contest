@@ -6,5 +6,4 @@ app_name = 'contests'
 urlpatterns = [
     path('', views.index, name='index'),
     path('play', views.play, name='play'),
-    path('stats/', views.stats, name='stats'),
 ] 

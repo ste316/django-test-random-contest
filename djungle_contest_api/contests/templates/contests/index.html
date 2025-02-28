@@ -77,7 +77,7 @@
 <body>
     <div class="header">
         <h1>Djungle Contest API</h1>
-        <p>Version 2.4</p>
+        <p>Version 1.0</p>
         <p>API for contest participation with pseudo-random prize distribution.</p>
     </div>
 
@@ -147,63 +147,10 @@
             <li><strong>200 OK</strong> - Request successful (may be a win or loss)</li>
             <li><strong>400 Bad Request</strong> - Missing required parameters</li>
             <li><strong>404 Not Found</strong> - Contest not found</li>
+            <li><strong>420 Enhance Your Calm</strong> - User has reached daily win limit</li>
             <li><strong>422 Unprocessable Entity</strong> - Contest is not active</li>
+            <li><strong>500 Internal Server Error</strong> - Unexpected server error or prize configuration issue</li>
         </ul>
-    </div>
-
-    <div class="endpoint">
-        <h3><span class="method">GET</span> /stats/</h3>
-        <p>Get detailed statistics about prize distribution for a contest.</p>
-        
-        <h4>Parameters</h4>
-        <table class="param-table">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Type</th>
-                    <th>Required</th>
-                    <th>Description</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>contest</td>
-                    <td>string</td>
-                    <td>Yes</td>
-                    <td>Contest code to get statistics for</td>
-                </tr>
-                <tr>
-                    <td>prize</td>
-                    <td>string</td>
-                    <td>No</td>
-                    <td>Specific prize code to get statistics for (optional)</td>
-                </tr>
-            </tbody>
-        </table>
-
-        <h4>Response</h4>
-        <p>The response includes detailed statistics about prize distribution.</p>
-        <p>Example response structure (simplified):</p>
-        <pre><code>{
-    "contest": {
-        "code": "CONTEST1",
-        "name": "Example Contest",
-        "is_active": true,
-        "start_date": "2023-01-01",
-        "end_date": "2023-12-31"
-    },
-    "prizes": {
-        "PRIZE1": {
-            "name": "Example Prize",
-            "perday": 10,
-            "total_wins": 5,
-            "remaining_wins": 5,
-            "distribution_evenness": 0.75,
-            "hours": [...]
-        }
-    },
-    "timestamp": "2023-06-01T12:34:56.789Z"
-}</code></pre>
     </div>
 
     <h2>Management Commands</h2>
@@ -213,12 +160,6 @@
         <h3>Analyze Prize Distribution</h3>
         <p>Command: <span class="code">python manage.py analyze_prize_distribution CONTEST_CODE</span></p>
         <p>Provides detailed analysis of prize distribution for a contest.</p>
-    </div>
-
-    <div class="endpoint">
-        <h3>Visualize Distribution</h3>
-        <p>Command: <span class="code">python manage.py visualize_distribution CONTEST_CODE</span></p>
-        <p>Generates ASCII charts to visualize the hourly distribution of prizes.</p>
     </div>
 
     <div class="footer">

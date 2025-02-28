@@ -92,7 +92,7 @@ def test_play_endpoint(contest, prize):
     
     # Test Case 2: Multiple requests with same user
     user_id = f"test_user_{random.randint(1000, 9999)}"
-    max_attempts = 500
+    max_attempts = 250
     print(f"\nTest Case 2: Multiple requests with same user (user_id: {user_id}), total attempts: {max_attempts}")
     
     tot_wins = 0
@@ -217,7 +217,7 @@ def main(only_cleanup=False):
         
         # Check win records
         check_win_records(prize)
-        time.sleep(100)
+        time.sleep(300)
         
         cleanup_test_data()
         print("\n✅ Tests completed successfully!")

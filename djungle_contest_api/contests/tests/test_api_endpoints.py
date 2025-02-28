@@ -9,6 +9,7 @@ from django.test import TestCase, Client
 from django.urls import reverse
 from django.utils import timezone
 from contests.models import Contest, Prize, WinRecord
+from contests.constants import USER_MAX_WINS_PER_DAY
 
 
 class PlayEndpointTests(TestCase):
@@ -222,6 +223,75 @@ class PlayEndpointTests(TestCase):
         # Daily limit should not be exceeded
         self.assertLessEqual(win_count, self.prize.perday)
 
+    def test_user_daily_win_limit(self):
+        """Test that a user can't win more than the daily limit (WMAX = 3)."""
+        # Create an active contest
+        today = timezone.now().date()
+        yesterday = today - datetime.timedelta(days=1)
+        tomorrow = today + datetime.timedelta(days=1)
+        
+        contest = Contest.objects.create(
+            code='test_user_limit',
+            name='Test User Limit Contest',
+            start_date=yesterday,
+            end_date=tomorrow
+        )
+        
+        # Create a prize with a high daily limit (higher than user limit)
+        prize = Prize.objects.create(
+            code='prize_user_limit',
+            name='User Limit Test Prize',
+            perday=10,  # High daily limit to ensure it doesn't interfere with test
+            contest=contest
+        )
+        
+        # Same user_id for all requests
+        user_id = 'test_user_123'
+        
+        # Create win records for this user today (reaching the WMAX limit)
+        for _ in range(USER_MAX_WINS_PER_DAY):
+            WinRecord.objects.create(
+                prize=prize,
+                user_id=user_id,
+                timestamp=timezone.now()
+            )
+        
+        # Verify the user has reached the win limit
+        self.assertEqual(WinRecord.get_user_wins_today(user_id), USER_MAX_WINS_PER_DAY)
+        
+        # Try to play again - should get a 420 response
+        response = self.client.get(
+            reverse('contests:play'), 
+            {'contest': contest.code, 'user': user_id}
+        )
+        
+        # Check the response
+        self.assertEqual(response.status_code, 420)
+        self.assertIn('error', response.json())
+        self.assertIn('daily win limit', response.json()['error'].lower())
+        
+        # Verify with debug mode
+        response_debug = self.client.get(
+            reverse('contests:play'), 
+            {'contest': contest.code, 'user': user_id, 'debug': 'true'}
+        )
+        
+        # Check the debug response
+        self.assertEqual(response_debug.status_code, 420)
+        self.assertIn('error', response_debug.json())
+        
+        # Now try with a different user who hasn't won anything yet
+        new_user_id = 'fresh_user_456'
+        
+        # This should succeed since it's a different user
+        response_new_user = self.client.get(
+            reverse('contests:play'), 
+            {'contest': contest.code, 'user': new_user_id}
+        )
+        
+        # Should get a 200 response 
+        self.assertEqual(response_new_user.status_code, 200)
+
 
 class IndexEndpointTests(TestCase):
     """Tests for the / (index) endpoint."""
@@ -270,102 +340,4 @@ class IndexEndpointTests(TestCase):
         self.assertEqual(response.status_code, 200)
         
         # Check response content type
-        self.assertEqual(response['Content-Type'], 'text/html; charset=utf-8')
-
-
-class StatsEndpointTests(TestCase):
-    """Tests for the /stats/ endpoint."""
-    
-    def setUp(self):
-        """Set up test data."""
-        self.client = Client()
-        
-        # Create an active contest
-        self.active_contest = Contest.objects.create(
-            code="ACTIVE_STATS",
-            name="Active Stats Test Contest",
-            start_date=timezone.now().date() - datetime.timedelta(days=1),
-            end_date=timezone.now().date() + datetime.timedelta(days=1)
-        )
-        
-        # Create a prize for the active contest
-        self.prize = Prize.objects.create(
-            code="PRIZE_STATS",
-            name="Stats Test Prize",
-            perday=10,
-            contest=self.active_contest
-        )
-        
-        # Create some win records
-        for i in range(5):
-            WinRecord.objects.create(
-                prize=self.prize,
-                user_id=f"stats_user_{i}"
-            )
-        
-        # URL for the stats endpoint - using namespace
-        self.stats_url = reverse('contests:stats')
-    
-    def test_missing_contest_parameter(self):
-        """Test the /stats/ endpoint with missing contest parameter (400 Bad Request)."""
-        response = self.client.get(self.stats_url)
-        
-        # Check status code
-        self.assertEqual(response.status_code, 400)
-        
-        # Check response content
-        data = json.loads(response.content)
-        self.assertIn('error', data)
-    
-    def test_nonexistent_contest(self):
-        """Test the /stats/ endpoint with a non-existent contest code (404 Not Found)."""
-        response = self.client.get(f"{self.stats_url}?contest=NONEXISTENT")
-        
-        # Check status code
-        self.assertEqual(response.status_code, 404)
-        
-        # Check response content
-        data = json.loads(response.content)
-        self.assertIn('error', data)
-    
-    def test_valid_contest_stats(self):
-        """Test the /stats/ endpoint with a valid contest (200 OK)."""
-        response = self.client.get(f"{self.stats_url}?contest={self.active_contest.code}")
-        
-        # Check status code
-        self.assertEqual(response.status_code, 200)
-        
-        # Check response structure
-        data = json.loads(response.content)
-        self.assertIn('contest', data)
-        self.assertIn('prizes', data)
-        self.assertIn('wins_today', data)
-        
-        # Validate contest information
-        self.assertEqual(data['contest']['code'], self.active_contest.code)
-        self.assertEqual(data['contest']['name'], self.active_contest.name)
-        
-        # Validate prize information
-        prizes = data['prizes']
-        self.assertEqual(len(prizes), 1)
-        self.assertEqual(prizes[0]['code'], self.prize.code)
-        self.assertEqual(prizes[0]['name'], self.prize.name)
-        self.assertEqual(prizes[0]['perday'], self.prize.perday)
-        
-        # Validate win information
-        self.assertEqual(data['wins_today'], 5)
-    
-    def test_valid_contest_stats_with_debug(self):
-        """Test the /stats/ endpoint with debug mode (200 OK)."""
-        response = self.client.get(f"{self.stats_url}?contest={self.active_contest.code}&debug=true")
-        
-        # Check status code
-        self.assertEqual(response.status_code, 200)
-        
-        # Check for debug information
-        data = json.loads(response.content)
-        self.assertIn('debug_info', data)
-        
-        # Debug info should contain distribution information
-        debug_info = data['debug_info']
-        self.assertIn('daily_stats', debug_info) 
+        self.assertEqual(response['Content-Type'], 'text/html; charset=utf-8') 

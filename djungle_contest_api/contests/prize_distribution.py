@@ -12,6 +12,7 @@ import logging
 import json
 from datetime import datetime
 import secrets  # Add this import at the top of the file
+from .constants import USER_MAX_WINS_PER_DAY
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -100,7 +101,18 @@ class PrizeDistributor:
                 )
             return False
         
-        # Use the time-slot based distribution algorithm
+        # Check if the user has reached their daily win limit
+        from .models import WinRecord
+        
+        if user_id and not WinRecord.user_can_win_today(user_id, USER_MAX_WINS_PER_DAY):
+            if self.debug:
+                self.logger.debug(
+                    f"User {user_id} has reached their daily win limit of {USER_MAX_WINS_PER_DAY}",
+                    extra=context
+                )
+            return False
+        
+        # Continue with the existing win determination logic
         return self._time_slot_distribution_algorithm(prize)
     
     def _time_slot_distribution_algorithm(self, prize):
@@ -373,7 +385,7 @@ class PrizeDistributor:
         
         # Calculate distribution metrics
         hours_with_wins = sum(1 for count in wins_by_hour.values() if count > 0)
-        total_wins = len(limited_wins)
+        ideal_wins = len(limited_wins)
         total_actual_wins = len(win_records)
         
         # Calculate hourly win rates
@@ -404,13 +416,53 @@ class PrizeDistributor:
                 'hourly_rate': round(hourly_rate, 2)
             })
         
+        # Calculate distribution evenness (0 to 1, with 1 being perfectly even)
+        # Only consider hours that have passed when calculating evenness
+        passed_hours = current_hour + 1
+        expected_wins_per_hour = ideal_wins / passed_hours if passed_hours > 0 and ideal_wins > 0 else 0
+        
+        # Calculate variance from expected distribution
+        if ideal_wins > 0 and passed_hours > 0:
+            sum_squared_deviation = sum((wins_by_hour[h] - expected_wins_per_hour) ** 2 for h in range(passed_hours))
+            variance = sum_squared_deviation / passed_hours
+            # Convert to a 0-1 scale where 1 is perfectly even
+            # Calculate max possible variance - all wins in one hour
+            max_possible_variance = 0
+            if passed_hours > 1:  # Need at least 2 hours to have variance
+                # Max variance occurs when all wins are in one hour
+                # In this scenario, one hour has all 'ideal_wins' and the rest have 0
+                max_possible_variance = (ideal_wins ** 2) * (passed_hours - 1) / passed_hours
+            
+            if max_possible_variance > 0:
+                # Ensure the value is between 0 and 1
+                distribution_evenness = max(0.0, min(1.0, 1 - (variance / max_possible_variance)))
+            else:
+                distribution_evenness = 1.0  # Perfect evenness if no variance possible
+        else:
+            distribution_evenness = 1.0  # Default to perfect evenness if no wins yet
+        
+        # Calculate variance by hour (for display purposes)
+        variance_by_hour = {}
+        ideal_distribution = {}
+        for hour in range(24):
+            if hour < passed_hours:
+                ideal_distribution[hour] = expected_wins_per_hour
+                variance_by_hour[hour] = wins_by_hour[hour] - expected_wins_per_hour
+            else:
+                ideal_distribution[hour] = 0
+                variance_by_hour[hour] = 0
+                
         stats = {
-            'total_wins': total_wins,  # Wins respecting hourly allocation
+            'ideal_wins': ideal_wins,  # Wins respecting hourly allocation
             'perday_limit': prize.perday,
             'hours_with_wins': hours_with_wins,
-            'remaining_wins': prize.perday - total_wins,
+            'remaining_wins': prize.perday - ideal_wins,
             'hourly_win_rates': hourly_win_rates,
-            'total_actual_wins': total_actual_wins  # Total actual wins for the day
+            'total_actual_wins': total_actual_wins,  # Total actual wins for the day
+            'distribution_evenness': distribution_evenness,  # Add distribution evenness metric
+            'wins_by_hour': wins_by_hour,  # Add wins by hour for display
+            'ideal_distribution': ideal_distribution,  # Add ideal distribution for display
+            'variance_by_hour': variance_by_hour  # Add variance by hour for display
         }
         
         # Log the statistics

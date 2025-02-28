@@ -45,7 +45,7 @@ def get_win_distribution_stats(prize, debug=False):
     
     # For backward compatibility, return a simplified version
     simplified_stats = {
-        'total_wins': stats['total_wins'],
+        'ideal_wins': stats['ideal_wins'],
         'perday_limit': stats['perday_limit'],
         'wins_by_hour': stats['wins_by_hour'],
         'max_wins_hour': max(stats['wins_by_hour'].values()) if stats['wins_by_hour'] else 0,
@@ -55,7 +55,7 @@ def get_win_distribution_stats(prize, debug=False):
     
     if debug:
         print(f"Win distribution stats for prize {prize.code}:")
-        print(f"Total wins today: {simplified_stats['total_wins']} out of {prize.perday}")
+        print(f"Ideal wins today: {simplified_stats['ideal_wins']} out of {prize.perday}")
         print(f"Wins by hour: {simplified_stats['wins_by_hour']}")
         print(f"Max wins in any hour: {simplified_stats['max_wins_hour']}")
         print(f"Hours with at least one win: {simplified_stats['hours_with_wins']} out of 24")

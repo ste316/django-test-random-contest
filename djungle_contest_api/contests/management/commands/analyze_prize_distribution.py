@@ -75,7 +75,8 @@ class Command(BaseCommand):
             else:
                 # Text format
                 self.stdout.write('\nToday\'s Distribution:')
-                self.stdout.write(f'Total wins: {today_stats["total_wins"]} out of {today_stats["perday_limit"]}')
+                self.stdout.write(f'Ideal wins (respecting hourly allocations): {today_stats["ideal_wins"]} out of {today_stats["perday_limit"]}')
+                self.stdout.write(f'Total actual wins: {today_stats["total_actual_wins"]}')
                 self.stdout.write(f'Remaining wins: {today_stats["remaining_wins"]}')
                 self.stdout.write(f'Distribution evenness: {today_stats["distribution_evenness"]:.2f}')
                 
