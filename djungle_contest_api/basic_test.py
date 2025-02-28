@@ -89,49 +89,9 @@ def test_play_endpoint(contest, prize):
     else:
         print(f"❌ Failed! Status code: {response.status_code}")
         print(f"Response: {response.text}")
-    
-    # Test Case 2: Multiple requests with same user
-    user_id = f"test_user_{random.randint(1000, 9999)}"
-    max_attempts = 250
-    print(f"\nTest Case 2: Multiple requests with same user (user_id: {user_id}), total attempts: {max_attempts}")
-    
-    tot_wins = 0
-    # Make 5 attempts with the same user
-    for i in range(max_attempts):
-        response = requests.get(f"{play_url}?contest={contest.code}&user={user_id}")
-        
-        if response.status_code == 200:
-            result: dict = response.json()
-            if result.get('win') == True:
-                print(f"  Attempt {i+1}: '🎉 WIN!'")
-                tot_wins += 1
 
-        else:
-            print(f"  Attempt {i+1}: ❌ Failed with status code {response.status_code}")
-    
-    print(f"\nTotal wins: {tot_wins}/{max_attempts}")
-
-    # Test Case 6: Multiple requests without specifying user
-    print(f"\nTest Case 3: Multiple requests without specifying user, total attempts: {max_attempts}")
-    
-    tot_wins_anonymous = 0
-    # Make 500 attempts without a specific user
-    for i in range(max_attempts):
-        response = requests.get(f"{play_url}?contest={contest.code}")
-        
-        if response.status_code == 200:
-            result: dict = response.json()
-            if result.get('win') == True:
-                print(f"  Attempt {i+1}: '🎉 WIN!'")
-                tot_wins_anonymous += 1
-
-        else:
-            print(f"  Attempt {i+1}: ❌ Failed with status code {response.status_code}")
-    
-    print(f"\nTotal anonymous wins: {tot_wins_anonymous}/{max_attempts}")
-
-    # Test Case 3: Invalid contest code
-    print("\nTest Case 4: Invalid contest code")
+    # Test Case 2: Invalid contest code
+    print("\nTest Case 2: Invalid contest code")
     response = requests.get(f"{play_url}?contest=invalid_contest_code")
     
     if response.status_code == 404:
@@ -141,8 +101,8 @@ def test_play_endpoint(contest, prize):
         print(f"❌ Failed! Expected 404, got {response.status_code}")
         print(f"Response: {response.text}")
     
-    # Test Case 4: Missing contest parameter
-    print("\nTest Case 5: Missing contest parameter")
+    # Test Case 3: Missing contest parameter
+    print("\nTest Case 3: Missing contest parameter")
     response = requests.get(f"{play_url}")
     
     if response.status_code == 400:
@@ -152,8 +112,8 @@ def test_play_endpoint(contest, prize):
         print(f"❌ Failed! Expected 400, got {response.status_code}")
         print(f"Response: {response.text}")
     
-    # Test Case 5: Debug mode
-    print("\nTest Case 6: Debug mode")
+    # Test Case 4: Debug mode
+    print("\nTest Case 4: Debug mode")
     response = requests.get(f"{play_url}?contest={contest.code}&debug=true")
     
     if response.status_code == 200:
@@ -196,11 +156,139 @@ def check_win_records(prize):
     for user_id, count in wins_by_user.items():
         print(f"  {user_id}: {count} wins")
 
+def setup_multiple_test_data(num_contests=3, force_cleanup=False):
+    """
+    Create multiple test contests and prizes for testing.
+    
+    Args:
+        num_contests (int): Number of contests to create
+        force_cleanup (bool): Whether to force cleanup of existing test data
+    
+    Returns:
+        list: List of tuples containing (contest, prize) for each contest
+    """
+    # Generate a unique base code for this test run
+    base_test_code = f"test_{int(time.time())}"
+    
+    # Create date range (today and 7 days from now)
+    today = timezone.now().date()
+    end_date = today + timedelta(days=7)
+    
+    # Delete any existing test contests to avoid conflicts
+    if force_cleanup:
+        cleanup_test_data()
+    
+    # List to store created contests and prizes
+    contest_prize_list = []
+    
+    # Create multiple contests
+    for i in range(num_contests):
+        # Create unique codes for each contest
+        test_code = f"{base_test_code}_contest_{i+1}"
+        
+        # Create a new test contest
+        contest = Contest.objects.create(
+            code=test_code,
+            name=f"Test Contest {test_code}",
+            start_date=today,
+            end_date=end_date
+        )
+        
+        # Create a prize for the contest with 100 available per day
+        prize = Prize.objects.create(
+            code=f"{test_code}_prize",
+            name=f"Test Prize for {test_code}",
+            perday=100,
+            contest=contest
+        )
+
+        print(f"Created test contest: {contest.name} ({contest.code})")
+        print(f"Created test prize: {prize.name} ({prize.code})")
+        print(f"Prize perday: {prize.perday}")
+        
+        contest_prize_list.append((contest, prize))
+    
+    return contest_prize_list
+
+def test_multiple_contests_with_users(contest_prize_list, max_attempts=250):
+    """
+    Test multiple contests with multiple users.
+    
+    Args:
+        contest_prize_list (list): List of (contest, prize) tuples
+        max_attempts (int): Maximum number of attempts per user per contest
+    """
+    # Base URL - assuming the server is running locally
+    base_url = "http://127.0.0.1:8000"
+    play_url = f"{base_url}/play"
+    
+    # Generate 5 unique users
+    users = [f"test_user_{random.randint(1000, 9999)}" for _ in range(3)]+['', '']
+    
+    # Detailed results tracking
+    results = {
+        'total_contests': len(contest_prize_list),
+        'users': {}
+    }
+    
+    # Iterate through each contest
+    for contest_idx, (contest, prize) in enumerate(contest_prize_list, 1):
+        print(f"\n=== Testing Contest {contest_idx}: {contest.code} ===")
+        
+        # Track results for this contest
+        contest_results = {
+            'contest_code': contest.code,
+            'user_wins': {}
+        }
+        
+        # Test each user
+        for user in users:
+            print(f"\nTesting user {user if user else 'anonymous'} on contest {contest.code}")
+            
+            # Track wins for this user on this contest
+            user_wins = 0
+            user_win_details = []
+            
+            # Make attempts for this user
+            for attempt in range(max_attempts):
+                response = requests.get(f"{play_url}?contest={contest.code}&user={user}")
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    if result.get('win') == True:
+                        user_wins += 1
+                        # Log detailed win information
+                        win_info = {
+                            'attempt': attempt + 1,
+                            'response': result
+                        }
+                        user_win_details.append(win_info)
+                        print(f"  Attempt {attempt+1}: '🎉 WIN!'")
+            
+            # Store user's wins
+            contest_results['user_wins'][user] = {
+                'total_wins': user_wins,
+                'win_details': user_win_details
+            }
+            print(f"User {user} wins: {user_wins}/{max_attempts}")
+        
+        # Store contest results
+        results['users'][contest.code] = contest_results
+    
+    # Print summary
+    print("\n=== Test Summary ===")
+    for contest_code, contest_data in results['users'].items():
+        print(f"\nContest: {contest_code}")
+        for user, user_results in contest_data['user_wins'].items():
+            print(f"  {user if user else 'anonymous'}: {user_results['total_wins']} wins")
+    
+    return results
+
 def main(only_cleanup=False):
     """
     Main test function.
     """
-    print("=== Djungle Contest API Test ===")
+    print("=== Djungle Contest API Multi-Contest Test ===")
     print(f"Time: {timezone.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
     if only_cleanup:
@@ -209,16 +297,29 @@ def main(only_cleanup=False):
         return
     
     try:
-        # Set up test data
-        contest, prize = setup_test_data(force_cleanup=True)
+        # Set up multiple test contests
+        contest_prize_list = setup_multiple_test_data(num_contests=2, force_cleanup=True)
         time.sleep(3)
-        # Run tests
+        
+        # Run tests on multiple contests with multiple users
+        test_results = test_multiple_contests_with_users(contest_prize_list)
+        
+        # Test play endpoint for each contest
+        contest, prize = contest_prize_list[0]
+        print(f"\nTesting play endpoint for contest: {contest.code}")
         test_play_endpoint(contest, prize)
         
-        # Check win records
-        check_win_records(prize)
+        # Optional: Check win records for each contest
+        for contest, prize in contest_prize_list:
+            check_win_records(prize)
+        
+        print('\nSleeping for 300 seconds, to check if the win records are correct, then cleanup')
+        # Optional delay to allow for processing
         time.sleep(300)
         
+        print('Cleaning up test data...')
+        time.sleep(0.07)
+        # Cleanup
         cleanup_test_data()
         print("\n✅ Tests completed successfully!")
         
@@ -227,10 +328,8 @@ def main(only_cleanup=False):
         import traceback
         traceback.print_exc()
     finally:
-        # Clean up test data if needed
-        # Contest.objects.filter(code__startswith='test_').delete()
-        print("\nTest data has been kept in the database for review.")
-        print("You can delete test contests with: Contest.objects.filter(code__startswith='test_').delete()")
+        cleanup_test_data()
+        print("\nDB cleared, exiting...")
 
 if __name__ == "__main__":
     main(only_cleanup=False)
